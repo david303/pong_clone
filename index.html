@@ -1,0 +1,256 @@
+<!doctype html> 
+<html lang="en"> 
+<head> 
+    <meta charset="UTF-8" />
+    <title></title>
+    <script type="text/javascript" src="js/phaser.min.js"></script>
+    <style type="text/css">
+        body {
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+
+<script type="text/javascript">
+
+var game = new Phaser.Game(800, 600, Phaser.AUTO, '', { preload: preload, create: create, update: update, render: render });
+
+var pad;
+var ballLaunched = false;
+var scoreText;
+var goalP1, goalP2;
+var pointsP1 = 0, pointsP2 = 0;
+var scored = false;
+
+function preload() {
+
+    //pad = new Phaser.Rectangle(20, 20, 20, 100);
+    
+
+}
+
+function create() {
+    game.physics.startSystem(Phaser.Physics.ARCADE);
+
+    var width = 20 // example;
+    var height = 100 // example;
+
+    //set goal zones
+
+    var goalP1bmd = game.add.bitmapData(10, 600);
+     
+    goalP1bmd.ctx.beginPath();
+    goalP1bmd.ctx.rect(0, 0, 10, 600);
+    goalP1bmd.ctx.fillStyle = '#ffffff';
+    goalP1bmd.ctx.fill();
+
+    goalP1 = game.add.sprite(game.world.centerX-400, 0, goalP1bmd);
+
+    var goalP2bmd = game.add.bitmapData(10, 600);
+     
+    goalP2bmd.ctx.beginPath();
+    goalP2bmd.ctx.rect(0, 0, 10, 600);
+    goalP2bmd.ctx.fillStyle = '#ffffff';
+    goalP2bmd.ctx.fill();
+
+    goalP2 = game.add.sprite(game.world.centerX+390, 0, goalP2bmd);
+
+    game.physics.arcade.enable(goalP1);
+    game.physics.arcade.enable(goalP2);
+
+    
+    //goalP1.enableBody = true;
+    //goalP2.enableBody = true;
+    goalP1.body.immovable = true;
+    goalP2.body.immovable = true;
+
+
+
+    //create pads and ball
+
+    var bmd = game.add.bitmapData(width, height);
+     
+    bmd.ctx.beginPath();
+    bmd.ctx.rect(0, 0, width, height);
+    bmd.ctx.fillStyle = '#ffffff';
+    bmd.ctx.fill();
+
+    pad = game.add.sprite(game.world.centerX-380, game.world.centerY-20, bmd);
+    pad.anchor.setTo(0.5, 0.5);
+
+    game.physics.arcade.enable(pad);
+
+    pad.body.collideWorldBounds = true;
+    pad.body.immovable = true;
+
+    //pad 2
+
+    var bmd = game.add.bitmapData(width, height);
+     
+    bmd.ctx.beginPath();
+    bmd.ctx.rect(0, 0, width, height);
+    bmd.ctx.fillStyle = '#ffffff';
+    bmd.ctx.fill();
+
+    pad2 = game.add.sprite(game.world.centerX+380, game.world.centerY-20, bmd);
+    pad2.anchor.setTo(0.5, 0.5);
+
+    game.physics.arcade.enable(pad2);
+
+    pad2.body.collideWorldBounds = true;
+    pad2.body.immovable = true;
+
+    //ball
+
+    var bmd2 = game.add.bitmapData(20,20);
+    bmd2.ctx.beginPath();
+    
+    bmd2.circle(10, 10, 10);
+    bmd2.ctx.fillStyle = '#ffffff';
+    bmd2.ctx.fill();
+
+    padBallGroup = game.add.group();
+    padBallGroup.add(pad);
+
+    ball = game.add.sprite(game.world.centerX-360, game.world.centerY-20, bmd2);
+    ball.anchor.setTo(0.5, 0.5);
+    game.physics.arcade.enable(ball);
+    ball.body.collideWorldBounds = true;
+    ball.body.bounce.set(1);
+    ball.body.angularDrag = 1;
+
+    padBallGroup.add(ball);
+
+    cursors = game.input.keyboard.createCursorKeys();
+    jumpButton = game.input.keyboard.addKey(Phaser.Keyboard.SPACEBAR);
+
+    scoreTextP1 = game.add.text(16, 16, 'P1: ' + pointsP1, { fontSize: '32px', fill: '#fff' });
+    scoreTextP2 = game.add.text(128, 16, 'P2: ' + pointsP2, { fontSize: '32px', fill: '#fff' });
+
+}
+
+function update() {
+    game.physics.arcade.collide(ball, pad, hitPad, null, this);
+    game.physics.arcade.collide(ball, pad2, hitPad2, null, this);
+
+    if (scored === false ) {
+        game.physics.arcade.overlap(ball, goalP1, hitGoalP1, null, this);
+        game.physics.arcade.overlap(ball, goalP2, hitGoalP2, null, this);
+    }
+
+    if(scored === false && ballLaunched === true) {
+        aiMovePad(pad2, ball);
+    }
+
+    if (scored === true) {
+        pad2.body.velocity = 0;
+    }
+
+    pad.body.velocity.y = 0;
+
+    if (ballLaunched === false) {
+        ball.body.velocity.y = 0;
+        if (cursors.up.isDown && pad.body.y > 5) {
+            //  Move to the left
+            //pad.body.velocity.y = -150;
+            padBallGroup.forEach(function(item) {
+                item.body.velocity.y = -250;
+            });
+     
+        } else if (cursors.down.isDown && pad.body.y < 495) {
+            //  Move to the right
+            //pad.body.velocity.y = 150;
+            padBallGroup.forEach(function(item) {
+                item.body.velocity.y = 250;
+            });
+            
+        }
+    } else {
+        if (cursors.up.isDown && pad.body.y > 5) {
+            pad.body.velocity.y = -250;
+     
+        } else if (cursors.down.isDown && pad.body.y < 495) {
+            pad.body.velocity.y = 250;
+            
+        }
+    }
+
+    if (jumpButton.isDown && ballLaunched === false)
+    {
+        //set ball not on pad
+        ball.body.velocity.x = 350;
+        //jumpTimer = game.time.now + 750;
+        ballLaunched = true;
+    }
+
+}
+
+function render() {
+
+    // Sprite debug info
+    //game.debug.spriteInfo(ball, 32, 32);
+
+}
+
+function hitPad(ball, pad) {
+    //console.log('hitpad');
+    if (cursors.up.isDown ) {
+        ball.body.velocity.y -= 50;
+ 
+    } else if (cursors.down.isDown ) {
+        ball.body.velocity.y += 50;
+        
+    }
+}
+
+function hitPad2(ball, pad) {
+    //console.log('hitpad');
+
+}
+
+function hitGoalP1(ball, goalP1) {
+    scored = true;
+    console.log('hit');
+    ball.body.velocity.x = 0;
+    ball.body.velocity.y = 0;
+
+    pointsP1 += 1;
+    scoreTextP1.text = 'P1: ' + pointsP1;
+
+    setTimeout(restartGame, 2000);
+}
+
+function hitGoalP2(ball, goalP2) {
+    scored = true;
+    console.log('hit');
+    ball.body.velocity.x = 0;
+    ball.body.velocity.y = 0;
+
+    pointsP2 += 1;
+    scoreTextP2.text = 'P2: ' + pointsP2;
+
+    setTimeout(restartGame, 2000);
+}
+
+function restartGame() {
+    //game.state.start('Play');
+    game.state.restart(true, false);
+    ballLaunched = false;
+    scored = false;
+
+}
+
+function aiMovePad(pad, ball) {
+    if( ball.body.y > pad.body.y ) {
+        pad.body.velocity.y = 200;
+    } else {
+        pad.body.velocity.y = -200;
+    }
+}
+
+
+</script>
+
+</body>
+</html>
